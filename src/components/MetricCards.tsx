@@ -33,7 +33,8 @@ function Card({
 
 export function MetricCards({ latest, count }: Props) {
   const spread = latest.divisaVenta - latest.divisaCompra;
-  const fecha = new Date(latest.fecha).toLocaleDateString('es-AR', {
+  const [y, m, d] = latest.fecha.split('T')[0].split('-').map(Number);
+  const fecha = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('es-AR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',

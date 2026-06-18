@@ -29,14 +29,10 @@ function processData(raw: ApiResponse['data']): ProcessedRate[] {
     const divisaVenta = parseFloat(entry.divisaVenta);
     const prevDivisaVenta = prev ? parseFloat(prev.divisaVenta) : null;
 
+    const [y, m, d] = entry.fecha.split('T')[0].split('-');
     return {
       fecha: entry.fecha,
-      fechaLabel: new Date(entry.fecha).toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        timeZone: 'UTC',
-      }),
+      fechaLabel: `${d}/${m}/${y}`,
       billeteCompra: parseFloat(entry.billeteCompra),
       billeteVenta: parseFloat(entry.billeteVenta),
       divisaCompra: parseFloat(entry.divisaCompra),
