@@ -1,4 +1,6 @@
-import type { ProcessedRate } from '../types';
+'use client';
+
+import type { ProcessedRate } from '@/types';
 
 interface Props {
   data: ProcessedRate[];

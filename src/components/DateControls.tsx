@@ -1,4 +1,6 @@
-import type { DateMode } from '../types';
+'use client';
+
+import type { DateMode } from '@/types';
 
 interface Props {
   mode: DateMode;

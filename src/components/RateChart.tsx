@@ -1,3 +1,5 @@
+'use client';
+
 import {
   LineChart,
   Line,
@@ -8,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { ProcessedRate } from '../types';
+import type { ProcessedRate } from '@/types';
 
 interface Props {
   data: ProcessedRate[];
