@@ -70,12 +70,17 @@ def obtener_cotizacion_divisa(fecha: str) -> list[dict]:
             celdas = fila.find_all("td")
             if celdas:
                 valores = [c.get_text(strip=True) for c in celdas]
+                compra = float(valores[1].replace(",", "."))
+                venta = float(valores[2].replace(",", "."))
+                if compra <= 0 or venta <= 0:
+                    print(f"Valores inválidos para {valores[3]}, omitiendo.")
+                    continue
                 resultados.append(
                     {
                         "moneda": valores[0],
                         "tipo_moneda": "divisa",
-                        "compra": float(valores[1].replace(",", ".")),
-                        "venta": float(valores[2].replace(",", ".")),
+                        "compra": compra,
+                        "venta": venta,
                         "fecha": valores[3],
                     }
                 )
@@ -114,12 +119,17 @@ def obtener_cotizacion_billete(fecha: str) -> list[dict]:
             celdas = fila.find_all("td")
             if celdas:
                 valores = [c.get_text(strip=True) for c in celdas]
+                compra = float(valores[1].replace(",", "."))
+                venta = float(valores[2].replace(",", "."))
+                if compra <= 0 or venta <= 0:
+                    print(f"Valores inválidos para {valores[3]}, omitiendo.")
+                    continue
                 resultados.append(
                     {
                         "moneda": valores[0],
                         "tipo_moneda": "billete",
-                        "compra": float(valores[1].replace(",", ".")),
-                        "venta": float(valores[2].replace(",", ".")),
+                        "compra": compra,
+                        "venta": venta,
                         "fecha": valores[3],
                     }
                 )
