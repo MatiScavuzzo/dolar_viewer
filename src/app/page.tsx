@@ -37,6 +37,9 @@ function processData(raw: SupabaseRate[]): ProcessedRate[] {
     const billete = raw.find(
       (r) => r.fecha === fecha && r.tipo_moneda === "billete",
     );
+
+    if (!divisa || divisa.venta <= 0) return null;
+    
     const prevFecha = fechas[i - 1];
     const prevDivisa = prevFecha
       ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "divisa")
@@ -59,7 +62,8 @@ function processData(raw: SupabaseRate[]): ProcessedRate[] {
         : null,
       updatedAt: divisa?.created_at ?? billete?.created_at ?? "",
     };
-  });
+  })
+  .filter((r): r is ProcessedRate => r !== null);
 }
 
 export default function Page() {
@@ -88,7 +92,6 @@ export default function Page() {
         .gte("fecha", from)
         .lte("fecha", to)
         .order("fecha", { ascending: true });
-      console.log({ data, error, from, to });
       setData(processData(data ?? []));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
