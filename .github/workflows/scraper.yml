@@ -1,0 +1,31 @@
+name: Scraper BNA
+
+on:
+  schedule:
+    - cron: "0 13 * * 1-5"
+    - cron: "0 16 * * 1-5"
+    - cron: "0 19 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          cd src/worker
+          pip install -e .
+
+      - name: Correr scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          cd src/worker
+          python3 scraper.py
