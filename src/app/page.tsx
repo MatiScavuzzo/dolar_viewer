@@ -5,7 +5,8 @@ import dynamic from "next/dynamic";
 import { DateControls } from "@/components/DateControls";
 import { MetricCards } from "@/components/MetricCards";
 import { RateTable } from "@/components/RateTable";
-import type { ApiResponse, DateMode, ProcessedRate } from "@/types";
+import type { DateMode, ProcessedRate, SupabaseRate } from "@/types";
+import { supabase } from "@/lib/supabase";
 
 const RateChart = dynamic(
   () =>
@@ -14,9 +15,6 @@ const RateChart = dynamic(
     })),
   { ssr: false },
 );
-
-const API_BASE =
-  "https://api.errepar.com/syserrepar/apidolar/api/CotizacionesBNAII/byDates";
 
 function toYMD(date: Date): string {
   return date.toISOString().split("T")[0];
@@ -29,26 +27,37 @@ function defaultDates() {
   return { from: toYMD(from), to: toYMD(to) };
 }
 
-function processData(raw: ApiResponse["data"]): ProcessedRate[] {
-  const sorted = [...raw].sort(
-    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime(),
-  );
+function processData(raw: SupabaseRate[]): ProcessedRate[] {
+  const fechas = [...new Set(raw.map((r) => r.fecha))].sort();
 
-  return sorted.map((entry, i) => {
-    const prev = sorted[i - 1];
-    const divisaVenta = parseFloat(entry.divisaVenta);
-    const prevDivisaVenta = prev ? parseFloat(prev.divisaVenta) : null;
+  return fechas.map((fecha, i) => {
+    const divisa = raw.find(
+      (r) => r.fecha === fecha && r.tipo_moneda === "divisa",
+    );
+    const billete = raw.find(
+      (r) => r.fecha === fecha && r.tipo_moneda === "billete",
+    );
+    const prevFecha = fechas[i - 1];
+    const prevDivisa = prevFecha
+      ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "divisa")
+      : null;
+    const prevBillete = prevFecha
+      ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "billete")
+      : null;
 
-    const [y, m, d] = entry.fecha.split("T")[0].split("-");
+    const [y, m, d] = fecha.split("-");
     return {
-      fecha: entry.fecha,
+      fecha,
       fechaLabel: `${d}/${m}/${y}`,
-      billeteCompra: parseFloat(entry.billeteCompra),
-      billeteVenta: parseFloat(entry.billeteVenta),
-      divisaCompra: parseFloat(entry.divisaCompra),
-      divisaVenta,
-      variation:
-        prevDivisaVenta !== null ? divisaVenta - prevDivisaVenta : null,
+      billeteCompra: billete?.compra ?? 0,
+      billeteVenta: billete?.venta ?? 0,
+      divisaCompra: divisa?.compra ?? 0,
+      divisaVenta: divisa?.venta ?? 0,
+      variation: prevDivisa ? (divisa?.venta ?? 0) - prevDivisa.venta : null,
+      variationBillete: prevBillete
+        ? (billete?.venta ?? 0) - prevBillete.venta
+        : null,
+      updatedAt: divisa?.created_at ?? billete?.created_at ?? "",
     };
   });
 }
@@ -73,13 +82,14 @@ export default function Page() {
     setError(null);
 
     try {
-      const res = await fetch(
-        `${API_BASE}?fechaInicial=${from}&fechaFinal=${to}`,
-      );
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-      const json: ApiResponse = await res.json();
-      if (!json.isSuccess) throw new Error("La API devolvió un error.");
-      setData(processData(json.data ?? []));
+      const { data, error } = await supabase
+        .from("cotizaciones_bna")
+        .select("fecha, compra, venta, tipo_moneda, created_at")
+        .gte("fecha", from)
+        .lte("fecha", to)
+        .order("fecha", { ascending: true });
+      console.log({ data, error, from, to });
+      setData(processData(data ?? []));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
       setData([]);
@@ -88,31 +98,21 @@ export default function Page() {
     }
   }, [mode, fromDate, toDate, singleDate]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    const res = fetch(
-      "https://www.bna.com.ar/Cotizador/HistoricoPrincipales?id=monedas&fecha=07%2F06%2F2026&idMoneda=55",
-    );
-    res
-      .then((r) => r.json())
-      .then((data) => {
-        console.log(data);
-      });
-  }, []);
+  }, [fetchData]);
 
   const latest = data[data.length - 1] ?? null;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
-      <header className="border-b border-[var(--border)] px-6 py-5">
+    <div className="min-h-screen bg-(--bg) text-(--text)">
+      <header className="border-b border-(--border) px-6 py-5">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-2xl font-semibold text-[var(--text-h)] m-0">
+          <h1 className="text-2xl font-semibold text-(--text-h) m-0">
             Dólar BNA
           </h1>
-          <p className="text-sm text-[var(--text)] mt-1 mb-0">
+          <p className="text-sm text-(--text) mt-1 mb-0">
             Cotizaciones del Banco Nación Argentina
           </p>
         </div>
@@ -133,9 +133,9 @@ export default function Page() {
         />
 
         {loading && (
-          <div className="flex items-center justify-center py-16 gap-3 text-[var(--text)]">
+          <div className="flex items-center justify-center py-16 gap-3 text-(--text)">
             <svg
-              className="animate-spin h-5 w-5 text-[var(--accent)]"
+              className="animate-spin h-5 w-5 text-(--accent)"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -174,7 +174,7 @@ export default function Page() {
         {!loading && !error && data.length > 0 && <RateTable data={data} />}
 
         {!loading && !error && data.length === 0 && (
-          <div className="text-center py-16 text-[var(--text)] text-sm">
+          <div className="text-center py-16 text-(--text) text-sm">
             No hay datos para el período seleccionado.
           </div>
         )}
