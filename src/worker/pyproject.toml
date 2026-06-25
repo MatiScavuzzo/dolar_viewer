@@ -8,3 +8,5 @@ dependencies = [
     "python-dotenv>=1.2",
     "supabase>=2.0",
 ]
+[tool.setuptools]
+py-modules = ["scraper"]
