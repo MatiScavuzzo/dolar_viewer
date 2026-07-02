@@ -30,40 +30,41 @@ function defaultDates() {
 function processData(raw: SupabaseRate[]): ProcessedRate[] {
   const fechas = [...new Set(raw.map((r) => r.fecha))].sort();
 
-  return fechas.map((fecha, i) => {
-    const divisa = raw.find(
-      (r) => r.fecha === fecha && r.tipo_moneda === "divisa",
-    );
-    const billete = raw.find(
-      (r) => r.fecha === fecha && r.tipo_moneda === "billete",
-    );
+  return fechas
+    .map((fecha, i) => {
+      const divisa = raw.find(
+        (r) => r.fecha === fecha && r.tipo_moneda === "divisa",
+      );
+      const billete = raw.find(
+        (r) => r.fecha === fecha && r.tipo_moneda === "billete",
+      );
 
-    if (!divisa || divisa.venta <= 0) return null;
-    
-    const prevFecha = fechas[i - 1];
-    const prevDivisa = prevFecha
-      ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "divisa")
-      : null;
-    const prevBillete = prevFecha
-      ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "billete")
-      : null;
+      if (!divisa && !billete) return null;
 
-    const [y, m, d] = fecha.split("-");
-    return {
-      fecha,
-      fechaLabel: `${d}/${m}/${y}`,
-      billeteCompra: billete?.compra ?? 0,
-      billeteVenta: billete?.venta ?? 0,
-      divisaCompra: divisa?.compra ?? 0,
-      divisaVenta: divisa?.venta ?? 0,
-      variation: prevDivisa ? (divisa?.venta ?? 0) - prevDivisa.venta : null,
-      variationBillete: prevBillete
-        ? (billete?.venta ?? 0) - prevBillete.venta
-        : null,
-      updatedAt: divisa?.created_at ?? billete?.created_at ?? "",
-    };
-  })
-  .filter((r): r is ProcessedRate => r !== null);
+      const prevFecha = fechas[i - 1];
+      const prevDivisa = prevFecha
+        ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "divisa")
+        : null;
+      const prevBillete = prevFecha
+        ? raw.find((r) => r.fecha === prevFecha && r.tipo_moneda === "billete")
+        : null;
+
+      const [y, m, d] = fecha.split("-");
+      return {
+        fecha,
+        fechaLabel: `${d}/${m}/${y}`,
+        billeteCompra: billete?.compra ?? null,
+        billeteVenta: billete?.venta ?? null,
+        divisaCompra: divisa?.compra ?? null,
+        divisaVenta: divisa?.venta ?? null,
+        variation:
+          prevDivisa && divisa ? divisa.venta - prevDivisa.venta : null,
+        variationBillete:
+          prevBillete && billete ? billete.venta - prevBillete.venta : null,
+        updatedAt: divisa?.created_at ?? billete?.created_at ?? "",
+      };
+    })
+    .filter((r): r is ProcessedRate => r !== null);
 }
 
 export default function Page() {

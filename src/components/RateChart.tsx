@@ -11,20 +11,45 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ProcessedRate } from "@/types";
+import { useState } from "react";
 
 interface Props {
   data: ProcessedRate[];
 }
 
 export function RateChart({ data }: Props) {
+  const [viewBillete, setViewBillete] = useState<boolean>(false);
+  const [viewDivisa, setViewDivisa] = useState<boolean>(true);
+  const [viewTodos, setViewTodos] = useState<boolean>(false);
+
+  const handleViewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "billete") {
+      setViewBillete(true);
+      setViewDivisa(false);
+      setViewTodos(false);
+    } else if (e.target.name === "divisa") {
+      setViewDivisa(true);
+      setViewBillete(false);
+      setViewTodos(false);
+    } else if (e.target.name === "todos") {
+      setViewBillete(true);
+      setViewDivisa(true);
+      setViewTodos(true);
+    }
+  };
+
   const chartData = data.map((d) => ({
     fecha: d.fechaLabel,
     "Divisa Venta": d.divisaVenta,
     "Divisa Compra": d.divisaCompra,
+    "Billete Venta": d.billeteVenta,
+    "Billete Compra": d.billeteCompra,
   }));
 
-  const fmt = (val: number) =>
-    `$${val.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (val: number | null) =>
+    val === null
+      ? "S/C"
+      : `$${val.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <div className="rounded-xl border border-(--border) p-4">
@@ -61,24 +86,78 @@ export function RateChart({ data }: Props) {
             }}
           />
           <Legend wrapperStyle={{ fontSize: "12px" }} />
-          <Line
-            type="monotone"
-            dataKey="Divisa Venta"
-            stroke="var(--accent)"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="Divisa Compra"
-            stroke="#60a5fa"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
+          {viewDivisa && (
+            <Line
+              type="monotone"
+              dataKey="Divisa Venta"
+              stroke="var(--accent)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+              connectNulls={false}
+            />
+          )}
+          {viewDivisa && (
+            <Line
+              type="monotone"
+              dataKey="Divisa Compra"
+              stroke="#60a5fa"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+              connectNulls={false}
+            />
+          )}
+          {viewBillete && (
+            <Line
+              type="monotone"
+              dataKey="Billete Venta"
+              stroke="#34d399"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+              connectNulls={false}
+            />
+          )}
+          {viewBillete && (
+            <Line
+              type="monotone"
+              dataKey="Billete Compra"
+              stroke="#f59e0b"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+              connectNulls={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
+      <div className="flex items-center justify-center gap-2">
+        <input
+          id="billete"
+          type="radio"
+          onChange={handleViewChange}
+          name="billete"
+          checked={viewTodos ? false : viewBillete}
+        />
+        <label htmlFor="billete">Billete</label>
+        <input
+          id="divisa"
+          type="radio"
+          onChange={handleViewChange}
+          name="divisa"
+          checked={viewTodos ? false : viewDivisa}
+        />
+        <label htmlFor="divisa">Divisa</label>
+        <input
+          id="todos"
+          type="radio"
+          onChange={handleViewChange}
+          name="todos"
+          checked={viewTodos}
+        />
+        <label htmlFor="todos">Todos</label>
+      </div>
     </div>
   );
 }

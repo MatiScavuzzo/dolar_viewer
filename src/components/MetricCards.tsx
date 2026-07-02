@@ -47,11 +47,13 @@ export function MetricCards({ latest }: Props) {
     timeZone: "America/Argentina/Buenos_Aires",
   });
 
-  const fmt = (n: number) =>
-    n.toLocaleString("es-AR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const fmt = (n: number | null) =>
+    n === null
+      ? "S/C"
+      : n.toLocaleString("es-AR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
 
   return (
     <div className="flex flex-col gap-3">

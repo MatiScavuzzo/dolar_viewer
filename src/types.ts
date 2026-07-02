@@ -9,10 +9,10 @@ export interface SupabaseRate {
 export interface ProcessedRate {
   fecha: string;
   fechaLabel: string;
-  billeteCompra: number;
-  billeteVenta: number;
-  divisaCompra: number;
-  divisaVenta: number;
+  billeteCompra: number | null;
+  billeteVenta: number | null;
+  divisaCompra: number | null;
+  divisaVenta: number | null;
   variation: number | null;
   variationBillete: number | null;
   updatedAt: string;

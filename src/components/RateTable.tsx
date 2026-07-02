@@ -7,11 +7,11 @@ interface Props {
 }
 
 function Variation({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-[var(--text)]">—</span>;
+  if (value === null) return <span className="text-(--text)">—</span>;
 
   const color =
     value === 0
-      ? "text-[var(--text)]"
+      ? "text-(--text)"
       : value > 0
         ? "text-green-600 dark:text-green-400"
         : "text-red-500 dark:text-red-400";
@@ -30,37 +30,39 @@ function Variation({ value }: { value: number | null }) {
 export function RateTable({ data }: Props) {
   const rows = [...data].reverse();
 
-  const fmt = (n: number) =>
-    n.toLocaleString("es-AR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const fmt = (n: number | null) =>
+    n === null
+      ? "S/C"
+      : n.toLocaleString("es-AR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
 
   return (
-    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+    <div className="rounded-xl border border-(--border) overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[var(--border)] text-[var(--text)] text-xs uppercase tracking-wide">
-              <th className="text-left px-4 py-3 font-medium bg-[var(--code-bg)]">
+            <tr className="border-b border-(--border) text-(--text) text-xs uppercase tracking-wide">
+              <th className="text-left px-4 py-3 font-medium bg-(--code-bg)">
                 Fecha
               </th>
-              <th className="text-right px-4 py-3 font-medium bg-[var(--code-bg)]">
+              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
                 Divisa Venta
               </th>
-              <th className="text-right px-4 py-3 font-medium bg-[var(--code-bg)]">
+              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
                 Divisa Compra
               </th>
-              <th className="text-right px-4 py-3 font-medium bg-[var(--code-bg)]">
+              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
                 Variación Divisa
               </th>
-              <th className="text-right px-4 py-3 font-medium bg-[var(--code-bg)]">
+              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
                 Billete Venta
               </th>
-              <th className="text-right px-4 py-3 font-medium bg-[var(--code-bg)]">
+              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
                 Billete Compra
               </th>
-              <th className="text-right px-4 py-3 font-medium bg-[var(--code-bg)]">
+              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
                 Variación Billete
               </th>
             </tr>
@@ -69,8 +71,8 @@ export function RateTable({ data }: Props) {
             {rows.map((row, i) => (
               <tr
                 key={row.fecha}
-                className={`border-b border-[var(--border)] last:border-0 transition-colors hover:bg-[var(--accent-bg)] ${
-                  i === 0 ? "bg-[var(--accent-bg)]" : ""
+                className={`border-b border-(--border) last:border-0 transition-colors hover:bg-(--accent-bg) ${
+                  i === 0 ? "bg-(--accent-bg)" : ""
                 }`}
               >
                 <td className="px-4 py-3 font-medium text-(--text-h) tabular-nums whitespace-nowrap">
