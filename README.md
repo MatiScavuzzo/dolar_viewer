@@ -1,73 +1,69 @@
-# React + TypeScript + Vite
+# Dólar Viewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Visor de las cotizaciones oficiales del dólar del **Banco de la Nación Argentina** (divisa y billete), con historial, variación diaria y gráficos.
 
-Currently, two official plugins are available:
+**Demo:** [dolar-viewer.vercel.app](https://dolar-viewer.vercel.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Cómo funciona
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+BNA (Cotizador histórico)
+        │  scraping (requests + BeautifulSoup)
+        ▼
+Scraper en Python ── GitHub Actions, lun a vie, 3 veces por día
+        │  upsert (moneda, tipo, fecha)
+        ▼
+Supabase (PostgreSQL)
+        │  supabase-js
+        ▼
+Web en Next.js (Vercel)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. **Scraper** (`src/worker/scraper.py`): consulta el cotizador histórico del BNA, extrae compra y venta del dólar divisa y del dólar billete, descarta valores inválidos y guarda cada cotización en Supabase con un *upsert*, así una misma fecha no se duplica.
+2. **Programación** (`.github/workflows/scraper.yml`): GitHub Actions corre el scraper de lunes a viernes a las 10, 13 y 16 h (hora argentina). También se puede disparar a mano.
+3. **Web** (`src/app`): lee las cotizaciones de Supabase y muestra tarjetas con el último valor, un gráfico de evolución y una tabla con la variación diaria. Se puede consultar un rango de fechas o un día puntual. Los días sin cotización se muestran como "S/C".
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Scraper:** Python 3.12, requests, BeautifulSoup, supabase-py
+- **Base de datos:** Supabase (PostgreSQL)
+- **Frontend:** Next.js 15, React 19, TypeScript, Tailwind CSS 4, Recharts
+- **Infraestructura:** GitHub Actions (cron) y Vercel
+
+## Correrlo localmente
+
+### Web
+
+```bash
+bun install
+cp .env.example .env.local   # completar con los datos de tu proyecto de Supabase
+bun run dev
 ```
+
+Variables necesarias:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+### Scraper
+
+```bash
+cd src/worker
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+python scraper.py                    # cotización de hoy
+python scraper.py --date 15/10/2026  # una fecha puntual (DD/MM/AAAA)
+```
+
+Variables necesarias (copiar `src/worker/.env.example` a `src/worker/.env`, o cargarlas como secrets del repositorio para GitHub Actions):
+
+```
+SUPABASE_URL=
+SUPABASE_KEY=
+```
+
+## Autor
+
+Matías Scavuzzo · [GitHub](https://github.com/MatiScavuzzo) · [LinkedIn](https://linkedin.com/in/matiscavuzzo)
