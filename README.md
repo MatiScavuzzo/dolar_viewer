@@ -2,7 +2,9 @@
 
 Visor de las cotizaciones oficiales del dólar del **Banco de la Nación Argentina** (divisa y billete), con historial, variación diaria y gráficos.
 
-**Demo:** [dolar-viewer.vercel.app](https://dolar-viewer.vercel.app)
+**Demo:** [dolarbna.vercel.app](https://dolarbna.vercel.app)
+
+![Dólar Viewer: tarjetas con la última cotización, gráfico de evolución y tabla de variación diaria](docs/captura.png)
 
 ## Cómo funciona
 
