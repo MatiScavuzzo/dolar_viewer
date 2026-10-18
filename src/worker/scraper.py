@@ -53,7 +53,7 @@ def obtener_cotizacion_divisa(fecha: str) -> list[dict]:
         }
 
         response = requests.get(
-            url, params=params, headers=headers, verify=False, timeout=10
+            url, params=params, headers=headers, timeout=10
         )
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -102,7 +102,7 @@ def obtener_cotizacion_billete(fecha: str) -> list[dict]:
         }
 
         response = requests.get(
-            url, params=params, headers=headers, verify=False, timeout=10
+            url, params=params, headers=headers, timeout=10
         )
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
