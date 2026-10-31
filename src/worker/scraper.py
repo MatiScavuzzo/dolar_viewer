@@ -1,157 +1,140 @@
 import argparse
 import os
+import sys
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from supabase import create_client
+from requests.adapters import HTTPAdapter
+from supabase import Client, create_client
+from urllib3.util.retry import Retry
 
-load_dotenv()
+URL = "https://www.bna.com.ar/Cotizador/HistoricoPrincipales"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+}
+TIMEOUT_SECONDS = 30
+ZONA_HORARIA = ZoneInfo("America/Argentina/Buenos_Aires")
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-url = "https://www.bna.com.ar/Cotizador/HistoricoPrincipales"
+# tipo_moneda -> parámetros del cotizador del BNA
+CONSULTAS = {
+    "divisa": {"id": "monedas", "idMoneda": "55"},
+    "billete": {"id": "billetes", "idMoneda": "22"},
+}
 
 
 def convertir_fecha(fecha_bna: str) -> str:
     return datetime.strptime(fecha_bna, "%d/%m/%Y").strftime("%Y-%m-%d")
 
 
-def guardar_cotizacion(cotizacion: dict) -> None:
+def validar_fecha(fecha: str) -> str:
     try:
-        registro = {
-            "moneda": cotizacion["moneda"],
-            "tipo_moneda": cotizacion["tipo_moneda"],
-            "compra": cotizacion["compra"],
-            "venta": cotizacion["venta"],
-            "fecha": convertir_fecha(cotizacion["fecha"]),
-        }
-        supabase.table("cotizaciones_bna").upsert(
-            registro, on_conflict="moneda,tipo_moneda,fecha"
-        ).execute()
-        print(
-            f"Guardado: {registro['fecha']} - {registro['moneda']} ({registro['tipo_moneda'].title()})"
-        )
-    except Exception as e:
-        print(f"Error al guardar en la base de datos: {e}")
+        convertir_fecha(fecha)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(
+            f"'{fecha}' no tiene el formato DD/MM/AAAA"
+        ) from e
+    return fecha
 
 
-def obtener_cotizacion_divisa(fecha: str) -> list[dict]:
-    try:
-        params = {
-            "id": "monedas",
-            "fecha": fecha,
-            "idMoneda": "55",
-        }
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        }
+def parsear_importe(texto: str) -> float:
+    """Convierte importes del BNA como '1510,0000' o '1.510,00' a float."""
+    return float(texto.replace(".", "").replace(",", "."))
 
-        response = requests.get(
-            url, params=params, headers=headers, timeout=10
-        )
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
 
-        tabla = soup.find("div", id="tablaCotizaciones")
-        sin_resultados = soup.find("div", class_="sinResultados")
+def parsear_cotizaciones(html: str, tipo_moneda: str) -> list[dict]:
+    soup = BeautifulSoup(html, "html.parser")
+    tabla = soup.find("div", id="tablaCotizaciones")
 
-        if tabla is None or sin_resultados is not None:
-            return []
-
-        resultados = []
-        filas = tabla.find_all("tr")
-        for fila in filas:
-            celdas = fila.find_all("td")
-            if celdas:
-                valores = [c.get_text(strip=True) for c in celdas]
-                compra = float(valores[1].replace(",", "."))
-                venta = float(valores[2].replace(",", "."))
-                if compra <= 0 or venta <= 0:
-                    print(f"Valores inválidos para {valores[3]}, omitiendo.")
-                    continue
-                resultados.append(
-                    {
-                        "moneda": valores[0],
-                        "tipo_moneda": "divisa",
-                        "compra": compra,
-                        "venta": venta,
-                        "fecha": valores[3],
-                    }
-                )
-        return resultados
-    except requests.exceptions.RequestException as e:
-        print(f"Error al conectar con BNA para {fecha}: {e}")
+    if tabla is None or soup.find("div", class_="sinResultados") is not None:
         return []
 
+    resultados = []
+    for fila in tabla.find_all("tr"):
+        valores = [c.get_text(strip=True) for c in fila.find_all("td")]
+        if not valores:
+            continue
 
-def obtener_cotizacion_billete(fecha: str) -> list[dict]:
-    try:
-        params = {
-            "id": "billetes",
-            "fecha": fecha,
-            "idMoneda": "22",
-        }
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        }
+        moneda, compra_texto, venta_texto, fecha = valores[:4]
+        compra = parsear_importe(compra_texto)
+        venta = parsear_importe(venta_texto)
+        if compra <= 0 or venta <= 0:
+            print(f"Valores inválidos para {fecha}, omitiendo.")
+            continue
 
-        response = requests.get(
-            url, params=params, headers=headers, timeout=10
+        resultados.append(
+            {
+                "moneda": moneda,
+                "tipo_moneda": tipo_moneda,
+                "compra": compra,
+                "venta": venta,
+                "fecha": convertir_fecha(fecha),
+            }
         )
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        tabla = soup.find("div", id="tablaCotizaciones")
-        sin_resultados = soup.find("div", class_="sinResultados")
-
-        if tabla is None or sin_resultados is not None:
-            return []
-
-        resultados = []
-        filas = tabla.find_all("tr")
-        for fila in filas:
-            celdas = fila.find_all("td")
-            if celdas:
-                valores = [c.get_text(strip=True) for c in celdas]
-                compra = float(valores[1].replace(",", "."))
-                venta = float(valores[2].replace(",", "."))
-                if compra <= 0 or venta <= 0:
-                    print(f"Valores inválidos para {valores[3]}, omitiendo.")
-                    continue
-                resultados.append(
-                    {
-                        "moneda": valores[0],
-                        "tipo_moneda": "billete",
-                        "compra": compra,
-                        "venta": venta,
-                        "fecha": valores[3],
-                    }
-                )
-        return resultados
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error al conectar con BNA para {fecha}: {e}")
-        return []
+    return resultados
 
 
-if __name__ == "__main__":
+def crear_sesion() -> requests.Session:
+    sesion = requests.Session()
+    sesion.headers.update(HEADERS)
+    reintentos = Retry(total=3, backoff_factor=2, status_forcelist=[500, 502, 503, 504])
+    sesion.mount("https://", HTTPAdapter(max_retries=reintentos))
+    return sesion
+
+
+def obtener_cotizaciones(
+    sesion: requests.Session, fecha: str, tipo_moneda: str
+) -> list[dict]:
+    params = {**CONSULTAS[tipo_moneda], "fecha": fecha}
+    response = sesion.get(URL, params=params, timeout=TIMEOUT_SECONDS)
+    response.raise_for_status()
+    return parsear_cotizaciones(response.text, tipo_moneda)
+
+
+def guardar_cotizacion(supabase: Client, cotizacion: dict) -> None:
+    supabase.table("cotizaciones_bna").upsert(
+        cotizacion, on_conflict="moneda,tipo_moneda,fecha"
+    ).execute()
+    print(
+        f"Guardado: {cotizacion['fecha']} - {cotizacion['moneda']} ({cotizacion['tipo_moneda'].title()})"
+    )
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Scraper de cotizaciones de divisas y billetes BNA"
     )
     parser.add_argument(
-        "--date", type=str, help="Fecha a consultar en formato DD/MM/YYYY"
+        "--date", type=validar_fecha, help="Fecha a consultar en formato DD/MM/AAAA"
     )
     args = parser.parse_args()
 
-    fecha = args.date if args.date else datetime.today().strftime("%d/%m/%Y")
+    load_dotenv()
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
+    if not supabase_url or not supabase_key:
+        print("Faltan SUPABASE_URL o SUPABASE_KEY (ver .env.example).", file=sys.stderr)
+        return 1
 
-    for cotizacion in obtener_cotizacion_divisa(fecha):
-        guardar_cotizacion(cotizacion)
-    for cotizacion in obtener_cotizacion_billete(fecha):
-        guardar_cotizacion(cotizacion)
+    supabase = create_client(supabase_url, supabase_key)
+    sesion = crear_sesion()
+    fecha = args.date or datetime.now(ZONA_HORARIA).strftime("%d/%m/%Y")
+
+    # Un día sin cotización (feriado) no es un error, pero una falla de red o de
+    # guardado sí: el proceso termina en 1 para que GitHub Actions marque el run como fallido.
+    errores = 0
+    for tipo_moneda in CONSULTAS:
+        try:
+            for cotizacion in obtener_cotizaciones(sesion, fecha, tipo_moneda):
+                guardar_cotizacion(supabase, cotizacion)
+        except Exception as e:
+            errores += 1
+            print(f"Error con {tipo_moneda} para {fecha}: {e}", file=sys.stderr)
+
+    return 1 if errores else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -3,7 +3,6 @@ export interface SupabaseRate {
   compra: number;
   venta: number;
   tipo_moneda: "divisa" | "billete";
-  created_at: string;
 }
 
 export interface ProcessedRate {
@@ -15,7 +14,6 @@ export interface ProcessedRate {
   divisaVenta: number | null;
   variation: number | null;
   variationBillete: number | null;
-  updatedAt: string;
 }
 
 export type DateMode = "range" | "single";

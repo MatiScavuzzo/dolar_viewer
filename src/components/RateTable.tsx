@@ -1,106 +1,74 @@
-"use client";
-
+import { Variation } from "@/components/Variation";
+import { formatMoney } from "@/lib/format";
 import type { ProcessedRate } from "@/types";
 
-interface Props {
-  data: ProcessedRate[];
-}
+const COLUMNS = [
+  "Divisa venta",
+  "Divisa compra",
+  "Variación divisa",
+  "Billete venta",
+  "Billete compra",
+  "Variación billete",
+];
 
-function Variation({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-(--text)">—</span>;
+const CELL = "px-4 py-3 text-right tabular-nums whitespace-nowrap";
 
-  const color =
-    value === 0
-      ? "text-(--text)"
-      : value > 0
-        ? "text-green-600 dark:text-green-400"
-        : "text-red-500 dark:text-red-400";
-
-  return (
-    <span className={`font-medium tabular-nums ${color}`}>
-      {value > 0 ? "+" : ""}
-      {value.toLocaleString("es-AR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}
-    </span>
-  );
-}
-
-export function RateTable({ data }: Props) {
+export function RateTable({ data }: { data: ProcessedRate[] }) {
   const rows = [...data].reverse();
 
-  const fmt = (n: number | null) =>
-    n === null
-      ? "S/C"
-      : n.toLocaleString("es-AR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-
   return (
-    <div className="rounded-xl border border-(--border) overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-(--border) text-(--text) text-xs uppercase tracking-wide">
-              <th className="text-left px-4 py-3 font-medium bg-(--code-bg)">
-                Fecha
-              </th>
-              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
-                Divisa Venta
-              </th>
-              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
-                Divisa Compra
-              </th>
-              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
-                Variación Divisa
-              </th>
-              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
-                Billete Venta
-              </th>
-              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
-                Billete Compra
-              </th>
-              <th className="text-right px-4 py-3 font-medium bg-(--code-bg)">
-                Variación Billete
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr
-                key={row.fecha}
-                className={`border-b border-(--border) last:border-0 transition-colors hover:bg-(--accent-bg) ${
-                  i === 0 ? "bg-(--accent-bg)" : ""
-                }`}
+    <div
+      tabIndex={0}
+      role="region"
+      aria-label="Tabla de cotizaciones por fecha"
+      className="rounded-xl border border-(--border) overflow-auto max-h-[32rem]"
+    >
+      <table className="w-full text-sm">
+        <caption className="sr-only">
+          Cotizaciones por fecha, de la más reciente a la más antigua
+        </caption>
+        <thead className="sticky top-0 bg-(--surface)">
+          <tr className="border-b border-(--border)">
+            <th scope="col" className="text-left px-4 py-3 font-medium">
+              Fecha
+            </th>
+            {COLUMNS.map((column) => (
+              <th
+                key={column}
+                scope="col"
+                className="text-right px-4 py-3 font-medium whitespace-nowrap"
               >
-                <td className="px-4 py-3 font-medium text-(--text-h) tabular-nums whitespace-nowrap">
-                  {row.fechaLabel}
-                </td>
-                <td className="px-4 py-3 font-medium text-(--text-h) text-right tabular-nums">
-                  ${fmt(row.divisaVenta)}
-                </td>
-                <td className="px-4 py-3 font-medium text-(--text-h) text-right tabular-nums">
-                  ${fmt(row.divisaCompra)}
-                </td>
-                <td className="px-4 py-3 font-medium text-(--text-h) text-right tabular-nums">
-                  <Variation value={row.variation} />
-                </td>
-                <td className="px-4 py-3 font-medium text-(--text-h) text-right tabular-nums">
-                  ${fmt(row.billeteVenta)}
-                </td>
-                <td className="px-4 py-3 font-medium text-(--text-h) text-right tabular-nums">
-                  ${fmt(row.billeteCompra)}
-                </td>
-                <td className="px-4 py-3 font-medium text-(--text-h) text-right tabular-nums">
-                  <Variation value={row.variationBillete} />
-                </td>
-              </tr>
+                {column}
+              </th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.fecha}
+              className="border-b border-(--border) last:border-0 text-(--text-h) hover:bg-(--accent-bg)"
+            >
+              <th
+                scope="row"
+                className="px-4 py-3 text-left font-medium tabular-nums whitespace-nowrap"
+              >
+                {row.fechaLabel}
+              </th>
+              <td className={CELL}>{formatMoney(row.divisaVenta)}</td>
+              <td className={CELL}>{formatMoney(row.divisaCompra)}</td>
+              <td className={CELL}>
+                <Variation value={row.variation} />
+              </td>
+              <td className={CELL}>{formatMoney(row.billeteVenta)}</td>
+              <td className={CELL}>{formatMoney(row.billeteCompra)}</td>
+              <td className={CELL}>
+                <Variation value={row.variationBillete} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

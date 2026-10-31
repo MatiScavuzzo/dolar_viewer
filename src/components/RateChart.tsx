@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,154 +11,109 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { formatMoney } from "@/lib/format";
 import type { ProcessedRate } from "@/types";
-import { useState } from "react";
 
-interface Props {
-  data: ProcessedRate[];
-}
+type View = "divisa" | "billete" | "todos";
 
-export function RateChart({ data }: Props) {
-  const [viewBillete, setViewBillete] = useState<boolean>(false);
-  const [viewDivisa, setViewDivisa] = useState<boolean>(true);
-  const [viewTodos, setViewTodos] = useState<boolean>(false);
+const VIEWS: { value: View; label: string }[] = [
+  { value: "divisa", label: "Divisa" },
+  { value: "billete", label: "Billete" },
+  { value: "todos", label: "Todos" },
+];
 
-  const handleViewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === "billete") {
-      setViewBillete(true);
-      setViewDivisa(false);
-      setViewTodos(false);
-    } else if (e.target.name === "divisa") {
-      setViewDivisa(true);
-      setViewBillete(false);
-      setViewTodos(false);
-    } else if (e.target.name === "todos") {
-      setViewBillete(true);
-      setViewDivisa(true);
-      setViewTodos(true);
-    }
-  };
+// El color identifica el tipo de dólar y el trazo, la punta: venta continua, compra punteada.
+const SERIES = [
+  { key: "divisaVenta", name: "Divisa venta", type: "divisa", color: "var(--series-divisa)", dash: undefined },
+  { key: "divisaCompra", name: "Divisa compra", type: "divisa", color: "var(--series-divisa)", dash: "5 4" },
+  { key: "billeteVenta", name: "Billete venta", type: "billete", color: "var(--series-billete)", dash: undefined },
+  { key: "billeteCompra", name: "Billete compra", type: "billete", color: "var(--series-billete)", dash: "5 4" },
+] as const;
 
-  const chartData = data.map((d) => ({
-    fecha: d.fechaLabel,
-    "Divisa Venta": d.divisaVenta,
-    "Divisa Compra": d.divisaCompra,
-    "Billete Venta": d.billeteVenta,
-    "Billete Compra": d.billeteCompra,
-  }));
+const TICK = { fontSize: 12, fill: "var(--text)" };
+// Con más puntos que esto los marcadores tapan la línea.
+const MAX_POINTS_WITH_DOTS = 31;
 
-  const fmt = (val: number | null) =>
-    val === null
-      ? "S/C"
-      : `$${val.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export function RateChart({ data }: { data: ProcessedRate[] }) {
+  const [view, setView] = useState<View>("divisa");
+  const showDots = data.length <= MAX_POINTS_WITH_DOTS;
 
   return (
-    <div className="rounded-xl border border-(--border) p-4">
-      <h2 className="text-sm font-semibold text-(--text-h) mb-4 uppercase tracking-wide">
-        Evolución del tipo de cambio
-      </h2>
-      <ResponsiveContainer width="100%" height={260}>
-        <LineChart
-          data={chartData}
-          margin={{ top: 4, right: 8, left: 8, bottom: 4 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+    <section className="rounded-xl border border-(--border) p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 mb-4">
+        <h2>Evolución del tipo de cambio</h2>
+        <fieldset className="flex items-center gap-4 text-sm">
+          <legend className="sr-only">Cotizaciones a mostrar</legend>
+          {VIEWS.map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="vista-grafico"
+                value={value}
+                checked={view === value}
+                onChange={() => setView(value)}
+                className="accent-(--accent)"
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      </div>
+      <ResponsiveContainer width="100%" height={288}>
+        <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
+          <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis
-            dataKey="fecha"
-            tick={{ fontSize: 11, fill: "var(--text)" }}
+            dataKey="fechaLabel"
+            tick={TICK}
             tickLine={false}
-            axisLine={false}
+            axisLine={{ stroke: "var(--border)" }}
+            minTickGap={32}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "var(--text)" }}
+            tick={TICK}
             tickLine={false}
             axisLine={false}
             domain={["auto", "auto"]}
-            tickFormatter={(v) => `$${(v as number).toLocaleString("es-AR")}`}
-            width={80}
+            tickFormatter={(v: number) => `$${v.toLocaleString("es-AR")}`}
+            width={72}
           />
           <Tooltip
-            formatter={(val) => fmt(val as number)}
+            formatter={(val) => formatMoney(typeof val === "number" ? val : null)}
             contentStyle={{
               background: "var(--bg)",
               border: "1px solid var(--border)",
               borderRadius: "8px",
               fontSize: "13px",
+              color: "var(--text-h)",
             }}
+            itemStyle={{ color: "var(--text-h)" }}
+            labelStyle={{ color: "var(--text-h)", fontWeight: 600 }}
           />
-          <Legend wrapperStyle={{ fontSize: "12px" }} />
-          {viewDivisa && (
+          <Legend
+            itemSorter={null}
+            wrapperStyle={{ fontSize: "13px" }}
+            formatter={(value) => (
+              <span style={{ color: "var(--text)" }}>{value}</span>
+            )}
+          />
+          {SERIES.filter((s) => view === "todos" || view === s.type).map((s) => (
             <Line
-              type="monotone"
-              dataKey="Divisa Venta"
-              stroke="var(--accent)"
+              key={s.key}
+              type="linear"
+              dataKey={s.key}
+              name={s.name}
+              legendType="plainline"
+              stroke={s.color}
               strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
+              strokeDasharray={s.dash}
+              dot={showDots ? { r: 3, fill: s.color, strokeDasharray: "" } : false}
+              activeDot={{ r: 5 }}
               connectNulls={false}
+              isAnimationActive={false}
             />
-          )}
-          {viewDivisa && (
-            <Line
-              type="monotone"
-              dataKey="Divisa Compra"
-              stroke="#60a5fa"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-              connectNulls={false}
-            />
-          )}
-          {viewBillete && (
-            <Line
-              type="monotone"
-              dataKey="Billete Venta"
-              stroke="#34d399"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-              connectNulls={false}
-            />
-          )}
-          {viewBillete && (
-            <Line
-              type="monotone"
-              dataKey="Billete Compra"
-              stroke="#f59e0b"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-              connectNulls={false}
-            />
-          )}
+          ))}
         </LineChart>
       </ResponsiveContainer>
-      <div className="flex items-center justify-center gap-2">
-        <input
-          id="billete"
-          type="radio"
-          onChange={handleViewChange}
-          name="billete"
-          checked={viewTodos ? false : viewBillete}
-        />
-        <label htmlFor="billete">Billete</label>
-        <input
-          id="divisa"
-          type="radio"
-          onChange={handleViewChange}
-          name="divisa"
-          checked={viewTodos ? false : viewDivisa}
-        />
-        <label htmlFor="divisa">Divisa</label>
-        <input
-          id="todos"
-          type="radio"
-          onChange={handleViewChange}
-          name="todos"
-          checked={viewTodos}
-        />
-        <label htmlFor="todos">Todos</label>
-      </div>
-    </div>
+    </section>
   );
 }

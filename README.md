@@ -23,7 +23,7 @@ Web en Next.js (Vercel)
 
 1. **Scraper** (`src/worker/scraper.py`): consulta el cotizador histórico del BNA, extrae compra y venta del dólar divisa y del dólar billete, descarta valores inválidos y guarda cada cotización en Supabase con un *upsert*, así una misma fecha no se duplica.
 2. **Programación** (`.github/workflows/scraper.yml`): GitHub Actions corre el scraper de lunes a viernes a las 10, 13 y 16 h (hora argentina). También se puede disparar a mano.
-3. **Web** (`src/app`): lee las cotizaciones de Supabase y muestra tarjetas con el último valor, un gráfico de evolución y una tabla con la variación diaria. Se puede consultar un rango de fechas o un día puntual. Los días sin cotización se muestran como "S/C".
+3. **Web** (`src/app`): genera la página en el servidor con los últimos 14 días (se regenera cada hora) y consulta Supabase desde el navegador para otros períodos. Muestra tarjetas con el último valor, un gráfico de evolución y una tabla con la variación diaria. Se puede consultar un rango de fechas o un día puntual. Los días sin cotización se muestran como "S/C".
 
 ## Stack
 
@@ -47,6 +47,7 @@ Variables necesarias:
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SITE_URL=   # opcional: URL pública, para las etiquetas de redes
 ```
 
 ### Scraper
@@ -66,6 +67,15 @@ SUPABASE_URL=
 SUPABASE_KEY=
 ```
 
+## Tests
+
+```bash
+bun run lint && bun run typecheck && bun test   # web
+cd src/worker && python -m unittest             # scraper
+```
+
+GitHub Actions corre todo esto en cada push (`.github/workflows/ci.yml`).
+
 ## Autor
 
-Matías Scavuzzo · [GitHub](https://github.com/MatiScavuzzo) · [LinkedIn](https://linkedin.com/in/matiscavuzzo)
+Desarrollado por [CallvúTech](https://www.callvutech.com.ar). Matías Scavuzzo: [GitHub](https://github.com/MatiScavuzzo), [LinkedIn](https://linkedin.com/in/matiscavuzzo).

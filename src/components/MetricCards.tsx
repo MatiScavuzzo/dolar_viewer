@@ -1,72 +1,54 @@
-"use client";
-
+import { Variation } from "@/components/Variation";
+import { formatLongDate, formatMoney } from "@/lib/format";
 import type { ProcessedRate } from "@/types";
-
-interface Props {
-  latest: ProcessedRate;
-  count: number;
-}
 
 function Card({
   label,
   value,
-  sub,
-  accent,
+  variation,
 }: {
   label: string;
-  value: string;
-  sub?: string;
-  accent?: boolean;
+  value: number | null;
+  variation?: number | null;
 }) {
   return (
-    <div
-      className={`rounded-xl border p-4 ${
-        accent
-          ? "border-(--accent-border) bg-(--accent-bg)"
-          : "border-(--border) bg-(--bg)"
-      }`}
-    >
-      <p className="text-xs text-(--text) uppercase tracking-wide mb-2">
-        {label}
+    <div className="rounded-xl border border-(--border) p-4">
+      <p className="text-sm mb-2">{label}</p>
+      <p className="figure text-xl sm:text-3xl text-(--text-h)">
+        {formatMoney(value)}
       </p>
-      <p className="text-2xl font-semibold text-(--text-h) tabular-nums">
-        {value}
-      </p>
-      {sub && <p className="text-xs text-(--text) mt-1">{sub}</p>}
+      {variation !== undefined && variation !== null && (
+        <p className="text-sm mt-1">
+          <Variation value={variation} /> respecto de la cotización anterior
+        </p>
+      )}
     </div>
   );
 }
 
-export function MetricCards({ latest }: Props) {
-  const updatedAt = new Date(latest.updatedAt).toLocaleString("es-AR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Argentina/Buenos_Aires",
-  });
-
-  const fmt = (n: number | null) =>
-    n === null
-      ? "S/C"
-      : n.toLocaleString("es-AR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-
+export function MetricCards({ latest }: { latest: ProcessedRate }) {
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-xs text-(--text)">
-        Última actualización:{" "}
-        <span className="font-medium text-(--text-h)">{updatedAt}</span>
+    <section aria-label="Última cotización" className="flex flex-col gap-3">
+      <p className="text-sm">
+        Cotización del{" "}
+        <span className="font-medium text-(--text-h)">
+          {formatLongDate(latest.fecha)}
+        </span>
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card label="Divisa Venta" value={`$${fmt(latest.divisaVenta)}`} />
-        <Card label="Divisa Compra" value={`$${fmt(latest.divisaCompra)}`} />
-        <Card label="Billete Venta" value={`$${fmt(latest.billeteVenta)}`} />
-        <Card label="Billete Compra" value={`$${fmt(latest.billeteCompra)}`} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card
+          label="Divisa venta"
+          value={latest.divisaVenta}
+          variation={latest.variation}
+        />
+        <Card label="Divisa compra" value={latest.divisaCompra} />
+        <Card
+          label="Billete venta"
+          value={latest.billeteVenta}
+          variation={latest.variationBillete}
+        />
+        <Card label="Billete compra" value={latest.billeteCompra} />
       </div>
-    </div>
+    </section>
   );
 }
