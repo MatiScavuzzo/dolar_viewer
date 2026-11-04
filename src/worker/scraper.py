@@ -41,7 +41,10 @@ def validar_fecha(fecha: str) -> str:
 
 def parsear_importe(texto: str) -> float:
     """Convierte importes del BNA como '1510,0000' o '1.510,00' a float."""
-    return float(texto.replace(".", "").replace(",", "."))
+    texto = texto.strip()
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", "."))
+    return float(texto)
 
 
 def parsear_cotizaciones(html: str, tipo_moneda: str) -> list[dict]:
