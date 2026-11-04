@@ -43,7 +43,7 @@ def parsear_importe(texto: str) -> float:
     """Convierte importes del BNA como '1510,0000' o '1.510,00' a float."""
     texto = texto.strip()
     if "," in texto:
-        texto = texto.replace(".", "").replace(",", "."))
+        texto = texto.replace(".", "").replace(",", ".")
     return float(texto)
 
 
